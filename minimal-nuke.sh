@@ -11,5 +11,5 @@ xargs -pa <(
         | sed '/^   /!d;s/^[ ]*//'
     )
   ) \
-  | sed -r '/(kernel|firmware|lvm2|selinux|systemd|^dnf)/d' 
+  | sed -r '/(kernel|firmware|grub|shim|efiboot|lvm2|selinux|systemd|^dnf)/d' 
   ) dnf remove
