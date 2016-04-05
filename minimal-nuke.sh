@@ -18,8 +18,13 @@ group_info() {
 	dnf group info "${a[@]}" | sed -r '/^[ ]{3}/!d;s/^[ ]*//'
 }
 
-xargs -pa <(
+get_remove_list() {
 	comm -32 <( dnf leaves | xargs rpm -q --qf "%{NAME}\n" | sort -u ) \
 		 <( group_info "$( group_info "minimal-environment" )" | sort -u ) \
 		 | grep -v -f <( printf "%s\n" "${PROTECTED[@]}" )
-) dnf remove
+}
+
+case "$@" in
+	list*) get_remove_list ;;
+	*) xargs -pa <( get_remove_list ) dnf remove ;; 
+esac
