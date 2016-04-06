@@ -2,7 +2,8 @@
 #set -x
 
 PROTECTED=(
-	"kernel*"
+	"--exclude='kernel-debug*'"
+	"kernel-*"
 	'*-firmware'
 	"git"
 	"grub*"
