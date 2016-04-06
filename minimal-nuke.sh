@@ -8,6 +8,7 @@ PROTECTED=(
 	"grub*"
 	"shim"
 	"cryptsetup"
+	"rpmfusion*"
 	"efibootmgr"
 	"lvm2*"
 	"selinux*"
