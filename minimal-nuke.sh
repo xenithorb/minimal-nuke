@@ -11,6 +11,10 @@ PROTECTED=(
 	"selinux*"
 	"systemd*"
 	"dnf*"
+	"iproute*"
+	"vim*"
+	"vi*"
+	"sudo"
 )
 
 setup() {
