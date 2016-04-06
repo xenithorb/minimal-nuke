@@ -4,6 +4,7 @@
 PROTECTED=(
 	"kernel*"
 	'*-firmware'
+	"git"
 	"grub*"
 	"shim"
 	"efibootmgr"
