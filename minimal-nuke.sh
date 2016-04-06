@@ -12,17 +12,17 @@ PROTECTED=(
 	"rpmfusion*"
 	"efibootmgr"
 	"lvm2*"
-	"selinux*"
+	"selinux-policy"
+	"selinux-policy-targeted"
 	"bash"
-	"systemd*"
-	"dnf*"
-	"iproute*"
+	"systemd"
+	"dnf"
+	"iproute"
 	"coreutils"
 	"dhclient"
 	"vim*"
-	"vi*"
+	"vim-minimal"
 	"sudo"
-	
 )
 
 setup() {
@@ -36,21 +36,16 @@ group_info() {
 	dnf group info "${a[@]}" | sed -r '/^[ ]{3}/!d;s/^[ ]*//'
 }
 
-#get_remove_list() {
-#	comm -32 <( dnf leaves | xargs rpm -q --qf "%{NAME}\n" | sort -u ) \
-#		 <( group_info "$( group_info "minimal-environment" )" | sort -u ) \
-#		 | grep -v -f <( printf "%s\n" "${PROTECTED[@]}" )
-#}
-
 get_keep_list() {
 	readarray -t keep_packages < <( group_info "$( group_info "minimal-environment" )" )
 	keep_packages+=( "${PROTECTED[@]}" )
 	printf "%s\n" "${keep_packages[@]}" 
 }
 
-
 case "$@" in
-	list*) get_keep_list ;;
+	list*) 
+		get_keep_list 
+		;;
 	*)
 		setup
 		sudo dnf install $(get_keep_list)
@@ -58,7 +53,5 @@ case "$@" in
 		sudo dnf autoremove
 		sudo dnf group mark remove minimal-environment
 		sudo dnf group install minimal-environment
-	;;
-
-#	*) xargs -a <( get_remove_list ) dnf remove ;; 
+		;;
 esac
