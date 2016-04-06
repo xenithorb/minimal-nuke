@@ -7,6 +7,7 @@ PROTECTED=(
 	"git"
 	"grub*"
 	"shim"
+	"cryptsetup"
 	"efibootmgr"
 	"lvm2*"
 	"selinux*"
