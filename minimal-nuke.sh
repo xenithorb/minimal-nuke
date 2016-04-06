@@ -3,7 +3,7 @@
 
 PROTECTED=(
 	"--exclude='kernel-debug*'"
-	"kernel-*"
+	"kernel"
 	'*-firmware'
 	"git"
 	"grub*"
