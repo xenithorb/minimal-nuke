@@ -14,9 +14,12 @@ PROTECTED=(
 	"systemd*"
 	"dnf*"
 	"iproute*"
+	"coreutils"
+	"dhclient"
 	"vim*"
 	"vi*"
 	"sudo"
+	
 )
 
 setup() {
