@@ -48,7 +48,9 @@ case "$@" in
 		setup
 		sudo dnf install $(get_keep_list)
 		sudo dnf mark install $(get_keep_list)
-		sudo dnf autoremove 
+		sudo dnf autoremove
+		sudo dnf group mark remove minimal-environment
+		sudo dnf group install minimal-environment
 	;;
 
 #	*) xargs -a <( get_remove_list ) dnf remove ;; 
