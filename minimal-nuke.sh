@@ -9,6 +9,7 @@ PROTECTED=(
 	"efibootmgr"
 	"lvm2*"
 	"selinux*"
+	"bash"
 	"systemd*"
 	"dnf*"
 	"iproute*"
