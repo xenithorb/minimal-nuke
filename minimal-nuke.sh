@@ -34,6 +34,7 @@ PROTECTED=(
 
 NO_INST_PKGS=(
 	"ppc64-utils"
+	"gpg-pubkey"
 )
 
 ENVIRONMENTS=(
@@ -46,7 +47,7 @@ setup() {
 	dnf group mark remove "${INSTALLED_ENVIRONMENTS[@]}"
 	dnf group install "${ENVIRONMENTS[@]}"
 	readarray -t GROUP_REASON_FILES < <( get_yumdb_group_reasons )
-	readarray -t all_packages < <( rpm -qa | grep -v "gpg-pubkey" )
+	readarray -t all_packages < <( rpm -qa | grep -vf <( printf '%s\n' "${NO_INST_PKGS[@]}" ) )
 	dnf mark install "${all_packages[@]}"
 	find "${DNFDB_LOCATION}" -type f -name "reason" -exec sed -i 's|user|dep|' '{}' \+
 }
