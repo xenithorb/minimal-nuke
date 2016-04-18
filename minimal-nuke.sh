@@ -93,15 +93,24 @@ set_group_reasons() {
 	sed -i 's|.*|group|' "${GROUP_REASON_FILES[@]}"
 }
 
+detonate() {
+	setup
+	install_protected
+	set_group_reasons
+	\dnf autoremove
+	get_reason_count
+}
+
 readarray -t INSTALLED_ENVIRONMENTS < <( get_installed_envs )
 
 case "$@" in
 	boom*)
-		setup
-		install_protected
-		set_group_reasons
-		unalias dnf && dnf autoremove
-		get_reason_count
+		detonate
+		;;
+	to-env*)
+		shift
+		ENVIRONMENTS+=( "$@" )
+		detonate
 		;;
 	list*)
 		get_keep_list
