@@ -79,7 +79,7 @@ get_keep_list() {
 }
 
 get_reason_count() {
-	find "${DNFDB_LOCATION}" -name reason -exec sh -c "cat '{}'; echo" \; \
+	find "${DNFDB_LOCATION}" -name reason -exec fmt -1 '{}' \+ \
 		| sort | uniq -c \
 		| awk 'BEGIN{ sum=1 } { sum+=$1; print $0 } END{ print "   ---------\n   ",sum,"TOTAL"}'
 }
