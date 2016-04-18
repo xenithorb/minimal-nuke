@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+#set -x
 
 [[ "$EUID" != "0" ]] && { echo "Need to run with sudo or as root"; exit; }
 
@@ -54,7 +54,7 @@ setup() {
 
 install_protected() {
 	dnf install --best $(get_keep_list)
-#	dnf mark install $(get_keep_list)
+	dnf mark install $(get_keep_list)
 }
 
 group_info() {
