@@ -103,7 +103,7 @@ get_installed_envs() {
 get_keep_list() {
 	keep_packages+=( "${PROTECTED[@]}" )
 	print_packages() { printf "%s\n" "${keep_packages[@]}"; };
-	if [[ $NO_INST_PKGS ]]; then
+	if [[ "${NO_INST_PKGS[0]}" ]]; then
 		print_packages \
 			| sort -u | grep -vf <( printf '%s\n' "${NO_INST_PKGS[@]}" )
 	else
@@ -127,11 +127,12 @@ set_group_reasons() {
 			awk '/ (Mandatory|Default)/{ a=1;next } /^[ ][A-Z]/{ a=0 } a{sub(/^[ ]*/,"")} a'
 		}
 		for i in "$@"; do
-			local info="$( dnf group info "$i" )"
+			local info
+			info="$( dnf group info "$i" )"
 			if ( cat <<< "$info" | grep -q "^Environment" ); then
 				readarray -t subgroups < <( strip <<< "$info" )
-				for i in "${subgroups[@]}"; do
-					dnf group info "$i" | strip
+				for j in "${subgroups[@]}"; do
+					dnf group info "$j" | strip
 				done
 			else
 				strip <<< "$info"
