@@ -13,6 +13,8 @@
 # Author: Michael Goodwin
 #
 
+export LC_ALL=C
+
 # Check for root, normal users have no business with any of this
 [[ "$EUID" != "0" ]] && { echo "Need to run with sudo or as root"; exit; }
 
@@ -26,7 +28,7 @@ DNFDB_LOCATION="/var/lib/dnf/yumdb"
 
 # Packages that WILL BE installed or left alone
 PROTECTED=(
-	"--exclude='kernel-debug*'"
+	"--exclude=kernel-debug*"
 	"kernel"
 	#'*-firmware'
 	#"git"
@@ -59,6 +61,7 @@ NO_INST_PKGS=(
 # Environments we want to end up with
 ENVIRONMENTS=(
 	"minimal-environment"
+#	"standard"
 #	"lxde-desktop-environment"
 )
 
@@ -70,12 +73,11 @@ ENVIRONMENTS=(
 # Then mark everything removed (dep)
 setup() {
 	readarray -t INSTALLED_ENVIRONMENTS < <( get_installed_envs )
+	readarray -t ALL_PACKAGES < <( rpm -qa | grep -vf <( printf '%s\n' "${NO_INST_PKGS[@]}" ) )
 	dnf group mark remove "${INSTALLED_ENVIRONMENTS[@]}"
+	dnf mark install "${ALL_PACKAGES[@]}" 2>&1 | eat_mark_install_msg
+	dnf mark remove "${ALL_PACKAGES[@]}" 2>&1 | eat_mark_install_msg
 	dnf group install "${ENVIRONMENTS[@]}"
-	readarray -t GROUP_REASON_FILES < <( get_yumdb_group_reasons )
-	readarray -t all_packages < <( rpm -qa | grep -vf <( printf '%s\n' "${NO_INST_PKGS[@]}" ) )
-	dnf mark install "${all_packages[@]}"
-	dnf mark remove "${all_packages[@]}"
 }
 
 # Install necessary stuff --best is for upgrade scenarios where a dependency needs something upgraded
@@ -84,15 +86,11 @@ setup() {
 # But I know the benavior of mark install, so we're going to mark install all protected packages, too.
 install_protected() {
 	dnf install --best $(get_keep_list)
-	dnf mark install $(get_keep_list)
+	dnf mark install $(get_keep_list) 2>&1 | eat_mark_install_msg
 }
 
-# This gets all the subgroups for an environment TODO: (should maybe be called get_subgroups)
-# By design, it gets all subgroups, including Optional groups. For minimal-environment,
-# This also means "Guest Agents" and "Standard"
-group_info() {
-	readarray -t a <<< "$@"
-	dnf group info "${a[@]}" | sed -r '/^[ ]{3}/!d;s/^[ ]*//'
+eat_mark_install_msg() {
+	grep -v "marked as user installed.$"
 }
 
 # Get a list of the currently installed environments TODO: (Maybe get this also from groups.json?)
@@ -103,10 +101,6 @@ get_installed_envs() {
 
 # A list of packages that we want to install if missing and keep if already installed
 get_keep_list() {
-	# Commenting this out truly goes minimal all the way
-	# Otherwise group_info pulls in Standard and "Guest Agents" as well
-	# That's just the way I wanted group_info to work BE CAREFUL
-	#readarray -t keep_packages < <( group_info "$( group_info "minimal-environment" )" )
 	keep_packages+=( "${PROTECTED[@]}" )
 	print_packages() { printf "%s\n" "${keep_packages[@]}"; };
 	if [[ $NO_INST_PKGS ]]; then
@@ -126,21 +120,42 @@ get_reason_count() {
 		| awk 'BEGIN{ sum=1 } { sum+=$1; print $0 } END{ print "   ---------\n   ",sum,"TOTAL"}'
 }
 
-# Prints out all the filenames of packages with reason == "group"
-get_yumdb_group_reasons() {
-	grep -lR "^group$" "${DNFDB_LOCATION}"
-}
-
-# Sets all packages in the array from the above function to == "group"
 set_group_reasons() {
-	sed -i 's|.*|group|' "${GROUP_REASON_FILES[@]}"
+	# Gets all bottom entities of a group or environment, recurse as necessary
+	get_group_pkgs() {
+		strip() {
+			awk '/ (Mandatory|Default)/{ a=1;next } /^[ ][A-Z]/{ a=0 } a{sub(/^[ ]*/,"")} a'
+		}
+		for i in "$@"; do
+			local info="$( dnf group info "$i" )"
+			if ( cat <<< "$info" | grep -q "^Environment" ); then
+				readarray -t subgroups < <( strip <<< "$info" )
+				for i in "${subgroups[@]}"; do
+					dnf group info "$i" | strip
+				done
+			else
+				strip <<< "$info"
+			fi
+		done
+	}
+
+	get_group_reason_pkgs() {
+		 xargs -a <( get_group_pkgs "${ENVIRONMENTS[@]}" ) rpm -q | sed 's/^/[[:alnum:]]\{40\}-/'
+	}
+
+	get_reason_files() {
+		find "${DNFDB_LOCATION}" -type f -name "reason"
+	}
+
+	readarray -t group_reason_files < <( LC_ALL=C egrep -f <( get_group_reason_pkgs ) < <( get_reason_files ) )
+	sed -i 's/.*/group/g' "${group_reason_files[@]}"
 }
 
 # The main sub-routine shared between option "boom" and "to-env"
 detonate() {
 	setup
-	install_protected
 	set_group_reasons
+	install_protected
 	# This \ is not a typo, prevents dnf from being aliased with -y
 	\dnf autoremove
 	get_reason_count
@@ -162,6 +177,8 @@ case "$@" in
 		get_reason_count
 		;;
 	*)
-		eval "$1"
+		command="$1"
+		shift
+		eval "$command" "$@"
 		;;
 esac
