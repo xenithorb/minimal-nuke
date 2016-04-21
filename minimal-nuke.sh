@@ -30,7 +30,7 @@ DNFDB_LOCATION="/var/lib/dnf/yumdb"
 PROTECTED=(
 	"--exclude=kernel-debug*"
 	"kernel"
-	#'*-firmware'
+	"*-firmware"
 	#"git"
 	"grub2"
 	"grub2-efi"
@@ -46,8 +46,7 @@ PROTECTED=(
 	"iproute"
 	"coreutils"
 	"dhcp-client"
-	#"vim"
-	#"vim-minimal"
+	"vim-minimal"
 	"sudo"
 )
 
@@ -66,11 +65,11 @@ ENVIRONMENTS=(
 )
 
 # The main DESTRUCTIVE routine
-# First we mark all installed environments as remove
-# Then we group install ENVIRONMENTS (to actually get packages installed if we need them)
-# Then collect a list of packages installed with reason "group" (otherwise lost with dnf mark install)
-# Then get a list of all packages and mark them installed (also creates missing yumdb reason files)
-# Then mark everything removed (dep)
+# First get a list of installed environments and all packages, store them as arrays
+# Mark all INSTALLED_ENVIRONMENTS as removed (doesn't actually remove anything yet)
+# Mark all packages as installed (this sets /var/lib/dnf/yumdb/*/*/reason = user)
+# Mark all package removed (this sets /var/lib/dnf/yumdb/*/*/reason = dep)
+# Group install the wanted ENVIRONMENTS (dnf will combine them)
 setup() {
 	readarray -t INSTALLED_ENVIRONMENTS < <( get_installed_envs )
 	readarray -t ALL_PACKAGES < <( rpm -qa | grep -vf <( printf '%s\n' "${NO_INST_PKGS[@]}" ) )
@@ -82,13 +81,12 @@ setup() {
 
 # Install necessary stuff --best is for upgrade scenarios where a dependency needs something upgraded
 # because you didn't upgrade yet, and won't install because it only sees the latest packages
-# I'm unsure whether dnf install itself will mark install missing or unknown packages or otherwise
-# But I know the benavior of mark install, so we're going to mark install all protected packages, too.
 install_protected() {
 	dnf install --best $(get_keep_list)
 	dnf mark install $(get_keep_list) 2>&1 | eat_mark_install_msg
 }
 
+# Mark remove/install messages are really unwieldy, so remove them
 eat_mark_install_msg() {
 	grep -v "marked as user installed.$"
 }
@@ -96,7 +94,7 @@ eat_mark_install_msg() {
 # Get a list of the currently installed environments TODO: (Maybe get this also from groups.json?)
 get_installed_envs() {
 	dnf group list -v hidden \
-		| sed -r '/^Installed environment/,/^[^ ]/!d;/^[ ]+/!d;s|.*\((.*)\).*|\1|'
+		| awk 'BEGIN{ FS="[()]" } /Installed env/{ a=1; next } /^[A-Z]/{ a=0 } a{ sub(/^[ ]*/,"") } a{print $2}'
 }
 
 # A list of packages that we want to install if missing and keep if already installed
@@ -124,7 +122,7 @@ set_group_reasons() {
 	# Gets all bottom entities of a group or environment, recurse as necessary
 	get_group_pkgs() {
 		strip() {
-			awk '/ (Mandatory|Default)/{ a=1;next } /^[ ][A-Z]/{ a=0 } a{sub(/^[ ]*/,"")} a'
+			awk '/ (Mandatory|Default)/{ a=1; next } /^[ ][A-Z]/{ a=0 } a{ sub(/^[ ]*/,"") } a'
 		}
 		for i in "$@"; do
 			local info
